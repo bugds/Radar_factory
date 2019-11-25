@@ -1,5 +1,5 @@
 import numpy as np
-
+import sys
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle, RegularPolygon
 from matplotlib.path import Path
@@ -181,7 +181,7 @@ def main(name, title, cat, values, errors, minRange, maxRange):
         M = 1.5*newMax
     plt.ylim(newMin/1.5, M + 0.5)
 
-    plt.savefig('//home/dmitriybs/' + name)
+    plt.savefig(sys.path[0] + '/' + name)
     plt.show()
 
 '''
