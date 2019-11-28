@@ -10,7 +10,7 @@ from matplotlib.transforms import Affine2D
 
 
 def radar_factory(num_vars, frame='polygon'):
-    """Create a radar chart with `num_vars` axes.
+    """Create a radar chart with "num_vars" axes.
 
     This function creates a RadarAxes projection and registers it.
 
