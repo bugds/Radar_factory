@@ -128,6 +128,10 @@ def data_recount(values, errors, minRange, maxRange):
             # concentrate on the reference interval
             minVal[i] = max(minVal[i] + newMax - intermedMax, newMin/1.5)
             maxVal[i] = max(maxVal[i] + newMax - intermedMax, newMin/1.5)
+        
+        if values[i] == 0:
+            minVal[i] = -1
+            maxVal[i] = 1
 
     return minVal, maxVal, newMin, newMax
 
@@ -237,13 +241,87 @@ maxRange = [9, 0.1, 0.1, 0.1, 5, 67, 4, 1, 11, 37]
 
 # variant 5
 name = 'img4'
-title = 'Лейкоцитарная формула'
-cat = ['WBC, 10^9/л', 'Промиелоциты', 'Миелоциты', 'Метамиелоциты', 'П/я нейтрофилы', 'С/я нейтрофилы', 'Эозинофилы', 'Базофилы', 'Моноциты', 'Лимфоциты']
-values = [6, 0, 0, 0, 3, 60, 2, 0, 7, 28]
-# errors = [i*0.1 for i in values]
-errors = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-minRange = [3, -0.1, -0.1, -0.1, 2, 55, 2, 0, 4, 18]
-maxRange = [9, 0.1, 0.1, 0.1, 5, 67, 4, 1, 11, 37]
-
+title = 'Анемии'
+cat = [
+    'RBC',
+    'HCT',
+    'HGB', 
+    'MCV', 
+    'MCH', 
+    'MCHC', 
+    'RDW', 
+    'B-12', 
+    'Фолаты', 
+    'Железо', 
+    'Ферритин',
+    'Tf', 
+    'RTf',
+    'Непрямой\n билирубин',
+    'RET',
+    'PLT',
+    'WBC'
+]
+values = [
+    '2.49',
+    '21.7',
+    '76', 
+    '87.1', 
+    '30.5', 
+    '0', 
+    '39.8', 
+    '399', 
+    '4.2', 
+    '32', 
+    '126',
+    '0', 
+    '0',
+    '0',
+    '0',
+    '254',
+    '5.1'
+]
+values = [float(i) for i in values]
+errors = [i*0 for i in values]
+# errors = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+minRange = [
+    '4.2',
+    '37',
+    '120', 
+    '81', 
+    '27', 
+    '33', 
+    '36.4', 
+    '130', 
+    '2.1', 
+    '50', 
+    '15',
+    '2.2', 
+    '1.9',
+    '0',
+    '0.5',
+    '200',
+    '5'
+]
+minRange = [float(i) for i in minRange]
+maxRange = [
+    '5.4',
+    '47',
+    '160', 
+    '99', 
+    '31', 
+    '37', 
+    '46.3', 
+    '1500', 
+    '20', 
+    '150', 
+    '300',
+    '3.7', 
+    '4.4',
+    '15.5',
+    '2',
+    '400',
+    '9'
+]
+maxRange = [float(i) for i in maxRange]
 
 main(name, title, cat, values, errors, minRange, maxRange)
