@@ -38,12 +38,13 @@ def radar_factory(num_vars, frame='polygon'):
             """Override fill so that line is closed by default"""
             return super().fill(closed=closed, *args, **kwargs)
 
-        def fill_between(self, x, y1, y2=0, where=None, interpolate=False,
+        def fill_between(self, x, y1, y2=0, closed=True, where=None, interpolate=False,
                      step=None, **kwargs):
             """Override fill_between so that line is closed by default"""
-            x = np.concatenate((x, [x[0]]))
-            y1 = np.concatenate((y1, [y1[0]]))
-            y2 = np.concatenate((y2, [y2[0]]))
+            if closed:
+                x = np.concatenate((x, [x[0]]))
+                y1 = np.concatenate((y1, [y1[0]]))
+                y2 = np.concatenate((y2, [y2[0]]))
             return super().fill_between(x, y1, y2, **kwargs)
 
         def plot(self, *args, **kwargs):
@@ -111,27 +112,26 @@ def data_recount(values, errors, minRange, maxRange):
     maxVal = list()
 
     for i in range(len(values)):
-        # Transferring into conditional units
-        difference = maxRange[i] - minRange[i]
-        minVal.append((values[i]-errors[i]) / difference)
-        maxVal.append((values[i]+errors[i]) / difference)
-        # Gathering marks of difference for each test
-        intermedMax = minRange[i] / difference + 1
+        try:
+            # Transferring into conditional units
+            difference = maxRange[i] - minRange[i]
+            minVal.append((values[i]-errors[i]) / difference)
+            maxVal.append((values[i]+errors[i]) / difference)
+            # Gathering marks of difference for each test
+            intermedMax = minRange[i] / difference + 1
 
-        # Condition is arbitrary, could be minimum, i=1, 2 etc
-        if i == 0:
-            newMin = minRange[i] / difference
-            newMax = intermedMax
-        else:
+            # Condition is arbitrary, could be minimum, i=1, 2 etc
+            if i == 0:
+                newMin = minRange[i] / difference
+                newMax = intermedMax
             # newMin/1.5 is the chosen minimum displayed. Each value less
             # than newMin/1.5 will be shown in the center of diagram to
             # concentrate on the reference interval
             minVal[i] = max(minVal[i] + newMax - intermedMax, newMin/1.5)
             maxVal[i] = max(maxVal[i] + newMax - intermedMax, newMin/1.5)
-        
-        if values[i] == 0:
-            minVal[i] = -1
-            maxVal[i] = 1
+        except:
+            minVal.append(newMin/1.5 - 1)
+            maxVal.append(newMin/1.5 - 1)
 
     return minVal, maxVal, newMin, newMax
 
@@ -151,7 +151,35 @@ def plotting(ax, theta, minArray, maxArray, color):
 
     ax.plot(theta, minArray, color=color1, alpha=0.5)
     ax.plot(theta, maxArray, color=color1, alpha=0.5)
-    ax.fill_between(theta, minArray, maxArray, alpha=0.3, color=color2)
+    
+    if color == 'blue':
+        ax.fill_between(theta, minArray, maxArray, alpha=0.3, color=color2)
+    else:
+        plotTht = list()
+        plotMin = list()
+        plotMax = list()
+        for i in range(0, len(values)):
+            try:
+                float(values[i])
+                plotTht.append(theta[i])
+                plotMin.append(minArray[i])
+                plotMax.append(maxArray[i])
+            except:
+                ax.fill_between(plotTht, plotMin, plotMax, alpha=0.3, color=color2, closed = False)
+                plotTht = list()
+                plotMin = list()
+                plotMax = list()
+        try:
+            float(values[0])
+            float(values[-1])
+            plotTht = np.concatenate(plotTht, theta[0])
+            plotMin = np.concatenate(plotMin, minArray[0])
+            plotMax = np.concatenate(plotMax, maxArray[0])
+        except:
+            if len(plotTht) > 1:
+                ax.fill_between(plotTht, plotMin, plotMax, alpha=0.3, color=color2, closed = False)
+        
+        
 
 
 def main(name, title, cat, values, errors, minRange, maxRange):
@@ -252,36 +280,55 @@ cat = [
     'RDW', 
     'B-12', 
     'Фолаты', 
+    'Гомоцистеин',
     'Железо', 
     'Ферритин',
+    'Гепсидин',
     'Tf', 
     'RTf',
     'Непрямой\n билирубин',
+    'ЛДГ',
     'RET',
     'PLT',
     'WBC'
 ]
-values = [
+oldValues = [
     '2.49',
     '21.7',
     '76', 
-    '87.1', 
-    '30.5', 
-    '0', 
-    '39.8', 
-    '399', 
-    '4.2', 
+    '95.2', 
+    '27.7', 
+    '33.6', 
+    '16.95', 
+    '157.6', 
+    '8.9', 
+    '73.6',
     '32', 
     '126',
-    '0', 
-    '0',
-    '0',
-    '0',
-    '254',
+    'NA',
+    'NA', 
+    'NA',
+    'NA',
+    '604.9',
+    '1.94',
+    '80',
     '5.1'
 ]
-values = [float(i) for i in values]
-errors = [i*0 for i in values]
+#values = [float(i) for i in values]
+values = list()
+for i in oldValues:
+    try:
+        values.append(float(i))
+    except:
+        values.append(i)
+
+#errors = [i*0 for i in values]
+errors = list()
+for i in values:
+    try:
+        errors.append(i*0)
+    except:
+        errors.append(i)
 # errors = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 minRange = [
     '4.2',
@@ -290,14 +337,17 @@ minRange = [
     '81', 
     '27', 
     '33', 
-    '36.4', 
+    '11', 
     '130', 
     '2.1', 
+    '5',
     '50', 
     '15',
+    '1.5',
     '2.2', 
     '1.9',
     '0',
+    '135',
     '0.5',
     '200',
     '5'
@@ -310,14 +360,17 @@ maxRange = [
     '99', 
     '31', 
     '37', 
-    '46.3', 
+    '15', 
     '1500', 
     '20', 
+    '10',
     '150', 
     '300',
+    '41.5',
     '3.7', 
     '4.4',
     '15.5',
+    '225',
     '2',
     '400',
     '9'
