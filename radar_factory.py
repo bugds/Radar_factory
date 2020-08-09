@@ -193,7 +193,7 @@ def main(name, title, cat, values, errors, minRange, maxRange):
     minVal, maxVal, newMin, newMax = data_recount(values, errors, minRange, maxRange)
 
     plt.yticks([], [])
-    ax.set_title(title,  position=(0.5, 1.1), ha='center')
+    # ax.set_title(title,  position=(0.5, 1.1), ha='center')
 
     # reference
     plotting(ax, theta, [newMin]*N, [newMax]*N, color='blue')
@@ -212,9 +212,39 @@ def main(name, title, cat, values, errors, minRange, maxRange):
     if M > 1.5*newMax:
         M = 1.5*newMax
     plt.ylim(newMin/1.5, M + 0.5)
+    
+    ax2 = fig.add_axes([0,0,1,1])
+    ax2.axis('equal')
+    elementsGroups = [
+        'Аплазия', 
+        'Гемолиз', 
+        'Железо', 
+        'Мегало', 
+        'Общее'
+    ]
+    elementsProportion = [
+        3,
+        2,
+        5,
+        4,
+        6
+    ]
+    n = ax2.pie(
+        elementsProportion, 
+        labels = elementsGroups, 
+        # wedgeprops = dict(width=0.4),
+        # explode = [0.05 for x in elementsGroups],
+        radius = 1.5,
+        # colors = ['black' for x in elementsGroups],
+        counterclock = False,
+        startangle = 80
+    )
+    ax2.set_position(ax.get_position())
+    for i in range(len(n[0])):
+        n[0][i].set_alpha(0.15)
 
-    plt.savefig(sys.path[0] + '/' + name)
-    plt.show()
+    plt.savefig(sys.path[0] + '/' + name, bbox_inches = "tight", format = 'pdf')
+    # plt.show()
 
 '''
 # variant 1
@@ -268,16 +298,16 @@ maxRange = [9, 0.1, 0.1, 0.1, 5, 67, 4, 1, 11, 37]
 '''
 
 # variant 5
-name = 'img4'
+name = 'img4.pdf'
 title = 'Анемии'
 cat = [
     'RBC',
     'HCT',
-    'HGB', 
-    'MCV', 
+    'HGB',  
     'MCH', 
     'MCHC', 
     'RDW', 
+    'MCV',
     'B-12', 
     'Фолаты', 
     'Гомоцистеин',
@@ -286,7 +316,7 @@ cat = [
     'Гепсидин',
     'Tf', 
     'RTf',
-    'Непрямой\n билирубин',
+    'Непр.\n бил-н',
     'ЛДГ',
     'RET',
     'PLT',
@@ -295,11 +325,11 @@ cat = [
 oldValues = [
     '2.49',
     '21.7',
-    '76', 
-    '95.2', 
+    '76',  
     '27.7', 
     '33.6', 
-    '16.95', 
+    '16.95',
+    '95.2', 
     '157.6', 
     '8.9', 
     '73.6',
@@ -334,10 +364,10 @@ minRange = [
     '4.2',
     '37',
     '120', 
-    '81', 
     '27', 
     '33', 
     '11', 
+    '81', 
     '130', 
     '2.1', 
     '5',
@@ -357,10 +387,10 @@ maxRange = [
     '5.4',
     '47',
     '160', 
-    '99', 
     '31', 
     '37', 
     '15', 
+    '99', 
     '1500', 
     '20', 
     '10',
