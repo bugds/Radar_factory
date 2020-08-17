@@ -1,0 +1,23 @@
+RBC	3.45	
+HGB	75	
+HCT	20.3	
+MCV	54.6	
+MCH	19.3	
+MCHC	265	
+WBC	5.9	
+PLT	161	
+RDW-CV	20.1	
+RDW-SD		
+RET%	0.33	
+RET#		
+Fe	5.3	
+Tf	5.5	
+RTf	6.9	
+Гепсидин	1.21	
+Гомоцистеин	13	
+TBIL	20.1	
+DBIL	15.4	
+B12	203	
+FOLAT	27.6	
+LDG	216	
+Ферритин	11.4	

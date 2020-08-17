@@ -1,5 +1,6 @@
 import numpy as np
 import sys
+import os
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle, RegularPolygon
 from matplotlib.path import Path
@@ -112,18 +113,18 @@ def data_recount(values, errors, minRange, maxRange):
     maxVal = list()
 
     for i in range(len(values)):
+        difference = maxRange[i] - minRange[i]
+        # Gathering marks of difference for each test
+        intermedMax = minRange[i] / difference + 1
+        # Condition is arbitrary, could be minimum, i=1, 2 etc
+        if i == 0:
+            newMin = minRange[i] / difference
+            newMax = intermedMax
         try:
             # Transferring into conditional units
-            difference = maxRange[i] - minRange[i]
             minVal.append((values[i]-errors[i]) / difference)
             maxVal.append((values[i]+errors[i]) / difference)
-            # Gathering marks of difference for each test
-            intermedMax = minRange[i] / difference + 1
 
-            # Condition is arbitrary, could be minimum, i=1, 2 etc
-            if i == 0:
-                newMin = minRange[i] / difference
-                newMax = intermedMax
             # newMin/1.5 is the chosen minimum displayed. Each value less
             # than newMin/1.5 will be shown in the center of diagram to
             # concentrate on the reference interval
@@ -178,9 +179,69 @@ def plotting(ax, theta, minArray, maxArray, color):
         except:
             if len(plotTht) > 1:
                 ax.fill_between(plotTht, plotMin, plotMax, alpha=0.3, color=color2, closed = False)
-        
-        
 
+class LabAnalyte():
+    def __init__(self, minmaxerr):
+        self.min = minmaxerr.split('-')[0]
+        self.max = minmaxerr.split('-')[1]
+        self.err = 0
+
+class LabReference(dict):
+    def __init__(self, theme, group = 'f'):
+        mainDir = sys.path[0]
+        refFile = '{}/{}/reference/{}ref.txt'.format( \
+            mainDir, theme, group \
+        )
+        
+        with open(refFile, 'r') as refObj:
+            lines = refObj.readlines()
+        
+        for l in lines:
+            if l.split('\t')[0]:
+                analyte = l.split('\t')[0]
+            
+            if l.split('\t')[1]:
+                age = l.split('\t')[1]
+            else:
+                age = 'all'
+            
+            if not analyte in self:
+                self[analyte] = dict()
+            self[analyte][age] = LabAnalyte(l.split('\t')[2])
+    
+    def getList(self, attribute, age):
+        if attribute == 'cat':
+            return list(self.keys())
+        if attribute == 'error':
+            return [0 for i in list(self.keys())]
+        
+        valList = list()
+        for analyte in self:
+            toAdd = False
+            for ageInt in self[analyte]:
+                if ageInt == 'all':
+                    toAdd = True
+                if 'лет' in ageInt:
+                    if '>' in ageInt:
+                        minAgeInt = int(ageInt.split()[0].replace('>', ''))
+                        maxAgeInt = 1000
+                    if '<' in ageInt:
+                        minAgeInt = 0
+                        maxAgeInt = int(ageInt.split()[0].replace('<', ''))
+                    if '-' in ageInt:
+                        minAgeInt = int(ageInt.split()[0].split('-')[0])
+                        maxAgeInt = int(ageInt.split()[0].split('-')[1])
+                    if minAgeInt <= int(age) <= maxAgeInt:
+                        toAdd = True
+                if toAdd:
+                    if attribute == 'min':
+                        v = self[analyte][ageInt].min
+                    if attribute == 'max':
+                        v = self[analyte][ageInt].max
+                    valList.append(float(v.replace(',', '.').replace('\n', '')))
+                    print(analyte)
+                    break
+        return valList
 
 def main(name, title, cat, values, errors, minRange, maxRange):
     N = len(values)
@@ -205,8 +266,8 @@ def main(name, title, cat, values, errors, minRange, maxRange):
 
     # labelling
     for i in range(N):
-        plt.text(theta[i], newMin * (1+0.02), minRange[i], size=7)
-        plt.text(theta[i], newMax * (1+0.02), maxRange[i], size=7)
+        plt.text(theta[i], newMin * (1+0.02), minRange[i], size=5, ha='center')
+        plt.text(theta[i], newMax * (1+0.02), maxRange[i], size=7, ha='center')
 
     m, M = ax.get_ylim()
     if M > 1.5*newMax:
@@ -216,18 +277,18 @@ def main(name, title, cat, values, errors, minRange, maxRange):
     ax2 = fig.add_axes([0,0,1,1])
     ax2.axis('equal')
     elementsGroups = [
-        'Аплазия', 
-        'Гемолиз', 
-        'Железо', 
         'Мегало', 
+        'Железо', 
+        'Гемолиз', 
+        'Аплазия', 
         'Общее'
     ]
     elementsProportion = [
         3,
-        2,
         5,
+        3,
         4,
-        6
+        8
     ]
     n = ax2.pie(
         elementsProportion, 
@@ -242,169 +303,34 @@ def main(name, title, cat, values, errors, minRange, maxRange):
     ax2.set_position(ax.get_position())
     for i in range(len(n[0])):
         n[0][i].set_alpha(0.15)
+        
+    plt.savefig( \
+        sys.path[0] \
+        + '/' + name, bbox_inches \
+        = "tight", format = 'pdf' \
+    )
 
-    plt.savefig(sys.path[0] + '/' + name, bbox_inches = "tight", format = 'pdf')
-    # plt.show()
+title = 'анемия'
 
-'''
-# variant 1
-name = 'img0'
-title = 'Клинический анализ крови'
-cat = ['RBC, 10^12/л', 'HGB, г/л', 'PLT, 10^9/л', 'СОЭ, мм/ч',
-       'WBC, 10^9/л', 'HCT, %', 'MPV, фл', 'MCH, пг',
-       'MCHC, г/л', 'MCV, фл', 'RDW, %']
-values = [5, 155, 180, 1, 3.9, 45.6, 10.3, 31.0, 33.8, 91.6, 13.5]
-errors = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-# errors = [0.1, 10, 10, 0.5, 0.1, 1, 1, 1, 1, 5, 1]
-minRange = [4.06, 125, 152, 2, 3.6, 36.7, 7.4, 23.8, 32.5, 73.0, 12.1]
-maxRange = [5.63, 163, 348, 10, 10.2, 47.1, 11.4, 33.4, 36.3, 96.2, 16.2]
-'''
-'''
-# variant 2
-name = 'img1'
-title = 'Клинический анализ крови'
-cat = ['RBC, 10^12/л', 'HGB, г/л', 'HCT, %', 'PLT, 10^9/л',
-       'СОЭ, мм/ч', 'WBC, 10^9/л', 'MPV, фл',
-       'RDW, %', 'MCV, фл', 'MCH, пг', 'MCHC, г/л']
-values = [3.9, 112, 34.2, 240, 8, 4.5, 9.3, 21.3, 47.0, 15.0, 31.2]
-errors = [i*0.1 for i in values]
-# errors = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-minRange = [4.06, 125, 36.7, 152, 2, 3.6, 7.4, 12.1, 73.0, 23.8, 32.5]
-maxRange = [5.63, 163, 47.1, 348, 10, 10.2, 11.4, 16.2, 96.2, 33.4, 36.3]
-'''
-'''
-# variant 3
-name = 'img2'
-title = 'Клинический анализ крови'
-cat = ['RBC, 10^12/л', 'HGB, г/л', 'HCT, %', 'PLT, 10^9/л',
-       'СОЭ, мм/ч', 'WBC, 10^9/л', 'MPV, фл',
-       'RDW, %', 'MCV, фл', 'MCH, пг', 'MCHC, г/л']
-values = [3.7, 98, 32.1, 260, 9, 4.7, 8.3, 11.3, 45.0, 13.0, 29.2]
-# errors = [i*0.1 for i in values]
-errors = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-minRange = [4.06, 125, 36.7, 152, 2, 3.6, 7.4, 12.1, 73.0, 23.8, 32.5]
-maxRange = [5.63, 163, 47.1, 348, 10, 10.2, 11.4, 16.2, 96.2, 33.4, 36.3]
-'''
-'''
-# variant 4
-name = 'img3'
-title = 'Лейкоцитарная формула'
-cat = ['WBC, 10^9/л', 'Промиелоциты', 'Миелоциты', 'Метамиелоциты', 'П/я нейтрофилы', 'С/я нейтрофилы', 'Эозинофилы', 'Базофилы', 'Моноциты', 'Лимфоциты']
-values = [27, 0, 0, 2, 8, 71, 3, 0, 4, 12]
-# errors = [i*0.1 for i in values]
-errors = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-minRange = [3, 0, 0, 0, 2, 55, 2, 0, 4, 18]
-maxRange = [9, 0.1, 0.1, 0.1, 5, 67, 4, 1, 11, 37]
-'''
-
-# variant 5
-name = 'img4.pdf'
-title = 'Анемии'
-cat = [
-    'RBC',
-    'HCT',
-    'HGB',  
-    'MCH', 
-    'MCHC', 
-    'RDW', 
-    'MCV',
-    'B-12', 
-    'Фолаты', 
-    'Гомоцистеин',
-    'Железо', 
-    'Ферритин',
-    'Гепсидин',
-    'Tf', 
-    'RTf',
-    'Непр.\n бил-н',
-    'ЛДГ',
-    'RET',
-    'PLT',
-    'WBC'
-]
-oldValues = [
-    '2.49',
-    '21.7',
-    '76',  
-    '27.7', 
-    '33.6', 
-    '16.95',
-    '95.2', 
-    '157.6', 
-    '8.9', 
-    '73.6',
-    '32', 
-    '126',
-    'NA',
-    'NA', 
-    'NA',
-    'NA',
-    '604.9',
-    '1.94',
-    '80',
-    '5.1'
-]
-#values = [float(i) for i in values]
-values = list()
-for i in oldValues:
-    try:
-        values.append(float(i))
-    except:
-        values.append(i)
-
-#errors = [i*0 for i in values]
-errors = list()
-for i in values:
-    try:
-        errors.append(i*0)
-    except:
-        errors.append(i)
-# errors = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-minRange = [
-    '4.2',
-    '37',
-    '120', 
-    '27', 
-    '33', 
-    '11', 
-    '81', 
-    '130', 
-    '2.1', 
-    '5',
-    '50', 
-    '15',
-    '1.5',
-    '2.2', 
-    '1.9',
-    '0',
-    '135',
-    '0.5',
-    '200',
-    '5'
-]
-minRange = [float(i) for i in minRange]
-maxRange = [
-    '5.4',
-    '47',
-    '160', 
-    '31', 
-    '37', 
-    '15', 
-    '99', 
-    '1500', 
-    '20', 
-    '10',
-    '150', 
-    '300',
-    '41.5',
-    '3.7', 
-    '4.4',
-    '15.5',
-    '225',
-    '2',
-    '400',
-    '9'
-]
-maxRange = [float(i) for i in maxRange]
-
-main(name, title, cat, values, errors, minRange, maxRange)
+for sample in os.listdir(sys.path[0] + '/anemia/samples/'):
+    age = int(sample[1:3])
+    name = sample + '.pdf'
+    
+    a = LabReference('anemia', group = sample[0])
+    cat = a.getList('cat', age)
+    errors = a.getList('error', age)
+    minRange = a.getList('min', age)
+    maxRange = a.getList('max', age)
+    
+    sampleDict = dict()
+    with open(sys.path[0] + '/anemia/samples/' + sample, 'r') as inpObj:
+        lines = inpObj.readlines()
+    for l in lines:
+        sampleDict[l.split('\t')[0]] = l.split('\t')[1]
+    values = list()
+    for c in cat:
+        if sampleDict[c]:
+            values.append(float(sampleDict[c]))
+        else:
+            values.append('NA')
+    main(name, title, cat, values, errors, minRange, maxRange)
