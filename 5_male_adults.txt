@@ -1,0 +1,1 @@
+Respondent	Gender	Age_years	Age_months	Pregnancy	WBC	LymN	MonN	NeuN	EosN	BasN	RBC	HGB	HCT	MCV	MCH	MCHC	RDW	PltN	MPV	RetN	Albumin_SI	ALT_SI	AST_SI	UreaNitr_SI	Ca_SI	Chol_SI	Bicarbon	GGT_SI	Gluc_SI	Fe_SI	P_SI	Bilirub_SI	Protein_SI	Triglyc_SI	UricAcid_SI	Creatinine_SI	Na_SI	K_SI	Cl_SI	Osm_SI	Globulin_SI
