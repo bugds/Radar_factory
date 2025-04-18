@@ -1,7 +1,6 @@
 import numpy as np
 import sys
 import os
-import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle, RegularPolygon
 from matplotlib.path import Path
@@ -109,7 +108,7 @@ def radar_factory(num_vars, frame='polygon'):
     return theta
 
 
-def data_recount(values, minRange, maxRange):
+def data_recount(values, errors, minRange, maxRange):
     minVal = list()
     maxVal = list()
 
@@ -123,16 +122,14 @@ def data_recount(values, minRange, maxRange):
             newMax = intermedMax
         try:
             # Transferring into conditional units
-            minVal.append((values[i]) / difference)
-            maxVal.append((values[i]) / difference)
+            minVal.append((values[i]-errors[i]) / difference)
+            maxVal.append((values[i]+errors[i]) / difference)
 
             # newMin/1.5 is the chosen minimum displayed. Each value less
             # than newMin/1.5 will be shown in the center of diagram to
             # concentrate on the reference interval
             minVal[i] = max(minVal[i] + newMax - intermedMax, newMin/1.5)
             maxVal[i] = max(maxVal[i] + newMax - intermedMax, newMin/1.5)
-            minVal[i] = min(minVal[i] + newMax - intermedMax, 1.5*newMax + 0.5)
-            maxVal[i] = min(maxVal[i] + newMax - intermedMax, 1.5*newMax + 0.5)
         except:
             minVal.append(newMin/1.5 - 1)
             maxVal.append(newMin/1.5 - 1)
@@ -155,7 +152,7 @@ def plotting(ax, theta, minArray, maxArray, color):
 
     ax.plot(theta, minArray, color=color1, alpha=0.5)
     ax.plot(theta, maxArray, color=color1, alpha=0.5)
-
+    
     if color == 'blue':
         ax.fill_between(theta, minArray, maxArray, alpha=0.3, color=color2)
     else:
@@ -195,27 +192,29 @@ class LabReference(dict):
         refFile = '{}/{}/reference/{}ref.txt'.format( \
             mainDir, theme, group \
         )
-
+        
         with open(refFile, 'r') as refObj:
             lines = refObj.readlines()
-
+        
         for l in lines:
             if l.split('\t')[0]:
                 analyte = l.split('\t')[0]
-
+            
             if l.split('\t')[1]:
                 age = l.split('\t')[1]
             else:
                 age = 'all'
-
+            
             if not analyte in self:
                 self[analyte] = dict()
             self[analyte][age] = LabAnalyte(l.split('\t')[2])
-
+    
     def getList(self, attribute, age):
         if attribute == 'cat':
             return list(self.keys())
-
+        if attribute == 'error':
+            return [0 for i in list(self.keys())]
+        
         valList = list()
         for analyte in self:
             toAdd = False
@@ -244,7 +243,7 @@ class LabReference(dict):
                     break
         return valList
 
-def main(name, title, cat, values, minRange, maxRange):
+def main(name, title, cat, values, errors, minRange, maxRange):
     N = len(values)
     theta = radar_factory(N, frame='polygon')
 
@@ -252,10 +251,9 @@ def main(name, title, cat, values, minRange, maxRange):
     fig.subplots_adjust(top=0.85, bottom=0.05)
 
     # recounting
-    minVal, maxVal, newMin, newMax = data_recount(values, minRange, maxRange)
+    minVal, maxVal, newMin, newMax = data_recount(values, errors, minRange, maxRange)
 
     plt.yticks([], [])
-    plt.xticks([], [])
     # ax.set_title(title,  position=(0.5, 1.1), ha='center')
 
     # reference
@@ -264,32 +262,37 @@ def main(name, title, cat, values, minRange, maxRange):
     # case
     plotting(ax, theta, minVal, maxVal, color='orange')
 
-    # ax.set_varlabels(map('\n'.join, zip(cat, map(lambda x: str(x), values))))
+    ax.set_varlabels(map('\n'.join, zip(cat, map(lambda x: str(x), values))))
 
     # labelling
-    # for i in range(N):
-    #     plt.text(theta[i], newMin * (1+0.02), minRange[i], size=5, ha='center')
-    #     plt.text(theta[i], newMax * (1+0.02), maxRange[i], size=7, ha='center')
+    for i in range(N):
+        plt.text(theta[i], newMin * (1+0.02), minRange[i], size=5, ha='center')
+        plt.text(theta[i], newMax * (1+0.02), maxRange[i], size=7, ha='center')
 
     m, M = ax.get_ylim()
-    # if M > 1.5*newMax:
-    #     M = 1.5*newMax
-
-    plt.ylim(newMin/1.5, 1.5*newMax + 0.5)
-
+    if M > 1.5*newMax:
+        M = 1.5*newMax
+    plt.ylim(newMin/1.5, M + 0.5)
+    
     ax2 = fig.add_axes([0,0,1,1])
     ax2.axis('equal')
     elementsGroups = [
-        'White',
-        'Red',
-        'Platelets'
+        'Мегало', 
+        'Железо', 
+        'Гемолиз', 
+        'Аплазия', 
+        'Общее'
     ]
     elementsProportion = [
-        6,7,2
+        3,
+        5,
+        3,
+        4,
+        8
     ]
     n = ax2.pie(
-        elementsProportion,
-        # labels = elementsGroups,
+        elementsProportion, 
+        labels = elementsGroups, 
         # wedgeprops = dict(width=0.4),
         # explode = [0.05 for x in elementsGroups],
         radius = 1.5,
@@ -299,33 +302,26 @@ def main(name, title, cat, values, minRange, maxRange):
     )
     ax2.set_position(ax.get_position())
     for i in range(len(n[0])):
-        n[0][i].set_alpha(0.00)
-
-    ax.set_axis_off()
-
+        n[0][i].set_alpha(0.15)
+        
     plt.savefig( \
         sys.path[0] \
-        + '/results/' + name, bbox_inches \
+        + '/' + name, bbox_inches \
         = "tight", format = 'pdf' \
     )
 
 title = 'анемия'
 
-analytes = [
-    'WBC','LymN','MonN','NeuN','EosN','BasN',
-    'RBC','HGB','HCT','MCV','MCH','MCHC','RDW',
-    'PltN','MPV'
-]
-
 for sample in os.listdir(sys.path[0] + '/anemia/samples/'):
     age = int(sample[1:3])
     name = sample + '.pdf'
-
+    
     a = LabReference('anemia', group = sample[0])
     cat = a.getList('cat', age)
+    errors = a.getList('error', age)
     minRange = a.getList('min', age)
     maxRange = a.getList('max', age)
-
+    
     sampleDict = dict()
     with open(sys.path[0] + '/anemia/samples/' + sample, 'r') as inpObj:
         lines = inpObj.readlines()
@@ -337,4 +333,4 @@ for sample in os.listdir(sys.path[0] + '/anemia/samples/'):
             values.append(float(sampleDict[c]))
         else:
             values.append('NA')
-    main(name, title, cat, values, minRange, maxRange)
+    main(name, title, cat, values, errors, minRange, maxRange)
