@@ -10,6 +10,8 @@ from matplotlib.projections import register_projection
 from matplotlib.spines import Spine
 from matplotlib.transforms import Affine2D
 
+globalMin = 3
+globalMax = 4
 
 def radar_factory(num_vars, frame='polygon'):
     """Create a radar chart with "num_vars" axes.
@@ -119,23 +121,21 @@ def data_recount(values, minRange, maxRange):
         intermedMax = minRange[i] / difference + 1
         # Condition is arbitrary, could be minimum, i=1, 2 etc
         if i == 0:
-            newMin = minRange[i] / difference
-            newMax = intermedMax
-        try:
-            # Transferring into conditional units
-            minVal.append((values[i]) / difference)
-            maxVal.append((values[i]) / difference)
+            # newMin = minRange[i] / difference
+            # newMax = intermedMax
+            newMin = globalMin
+            newMax = globalMax
+        # Transferring into conditional units
+        minVal.append(globalMin - ((minRange[i] - values[i]) / difference))
+        maxVal.append(globalMin - ((minRange[i] - values[i]) / difference))
 
-            # newMin/1.5 is the chosen minimum displayed. Each value less
-            # than newMin/1.5 will be shown in the center of diagram to
-            # concentrate on the reference interval
-            minVal[i] = max(minVal[i] + newMax - intermedMax, newMin/1.5)
-            maxVal[i] = max(maxVal[i] + newMax - intermedMax, newMin/1.5)
-            minVal[i] = min(minVal[i] + newMax - intermedMax, 1.5*newMax + 0.5)
-            maxVal[i] = min(maxVal[i] + newMax - intermedMax, 1.5*newMax + 0.5)
-        except:
-            minVal.append(newMin/1.5 - 1)
-            maxVal.append(newMin/1.5 - 1)
+        # newMin/1.5 is the chosen minimum displayed. Each value less
+        # than newMin/1.5 will be shown in the center of diagram to
+        # concentrate on the reference interval
+        minVal[i] = max(minVal[i], newMin/1.5)
+        maxVal[i] = max(maxVal[i], newMin/1.5)
+        minVal[i] = min(minVal[i], 1.5*newMax + 0.5)
+        maxVal[i] = min(maxVal[i], 1.5*newMax + 0.5)
 
     return minVal, maxVal, newMin, newMax
 
@@ -185,32 +185,26 @@ def plotting(ax, theta, minArray, maxArray, color):
 
 class LabAnalyte():
     def __init__(self, minmaxerr):
-        self.min = minmaxerr.split('-')[0]
-        self.max = minmaxerr.split('-')[1]
+        self.min = float(minmaxerr.split('-')[0])
+        self.max = float(minmaxerr.split('-')[1])
         self.err = 0
 
 class LabReference(dict):
-    def __init__(self, theme, group = 'f'):
-        mainDir = sys.path[0]
-        refFile = '{}/{}/reference/{}ref.txt'.format( \
-            mainDir, theme, group \
-        )
-
+    def __init__(self, refFile):
         with open(refFile, 'r') as refObj:
             lines = refObj.readlines()
 
         for l in lines:
-            if l.split('\t')[0]:
-                analyte = l.split('\t')[0]
-
-            if l.split('\t')[1]:
-                age = l.split('\t')[1]
+            if l[0] != '_':
+                analyte = l.strip()
             else:
-                age = 'all'
-
-            if not analyte in self:
-                self[analyte] = dict()
-            self[analyte][age] = LabAnalyte(l.split('\t')[2])
+                sex = l[1]
+                if not analyte in self:
+                    self[analyte] = dict()
+                if not sex in self[analyte]:
+                    self[analyte][sex] = dict()
+                for age in range(int(l[2:].split('-')[0]), int(l.split('-')[1].split(':')[0])):
+                    self[analyte][sex][age] = LabAnalyte(l.split(':')[1])
 
     def getList(self, attribute, age):
         if attribute == 'cat':
@@ -240,7 +234,6 @@ class LabReference(dict):
                     if attribute == 'max':
                         v = self[analyte][ageInt].max
                     valList.append(float(v.replace(',', '.').replace('\n', '')))
-                    print(analyte)
                     break
         return valList
 
@@ -256,7 +249,6 @@ def main(name, title, cat, values, minRange, maxRange):
 
     plt.yticks([], [])
     plt.xticks([], [])
-    # ax.set_title(title,  position=(0.5, 1.1), ha='center')
 
     # reference
     plotting(ax, theta, [newMin]*N, [newMax]*N, color='blue')
@@ -264,49 +256,35 @@ def main(name, title, cat, values, minRange, maxRange):
     # case
     plotting(ax, theta, minVal, maxVal, color='orange')
 
-    # ax.set_varlabels(map('\n'.join, zip(cat, map(lambda x: str(x), values))))
+    _, M = ax.get_ylim()
 
-    # labelling
+    plt.ylim(newMin/1.5 - 0.1, 1.5*newMax + 0.6)
+
+    # ax2 = fig.add_axes([0,0,1,1])
+    # ax2.axis('equal')
+    # elementsProportion = [
+    #     6,7,2
+    # ]
+    # n = ax2.pie(
+    #     elementsProportion,
+    #     radius = 1.5,
+    #     counterclock = False,
+    #     startangle = 80
+    # )
+    # ax2.set_position(ax.get_position())
+    # for i in range(len(n[0])):
+    #     n[0][i].set_alpha(0.00)
+
+    # ax.set_varlabels(map('\n'.join, zip(cat, map(lambda x: str(x), values))))
     # for i in range(N):
     #     plt.text(theta[i], newMin * (1+0.02), minRange[i], size=5, ha='center')
     #     plt.text(theta[i], newMax * (1+0.02), maxRange[i], size=7, ha='center')
-
-    m, M = ax.get_ylim()
-    # if M > 1.5*newMax:
-    #     M = 1.5*newMax
-
-    plt.ylim(newMin/1.5, 1.5*newMax + 0.5)
-
-    ax2 = fig.add_axes([0,0,1,1])
-    ax2.axis('equal')
-    elementsGroups = [
-        'White',
-        'Red',
-        'Platelets'
-    ]
-    elementsProportion = [
-        6,7,2
-    ]
-    n = ax2.pie(
-        elementsProportion,
-        # labels = elementsGroups,
-        # wedgeprops = dict(width=0.4),
-        # explode = [0.05 for x in elementsGroups],
-        radius = 1.5,
-        # colors = ['black' for x in elementsGroups],
-        counterclock = False,
-        startangle = 80
-    )
-    ax2.set_position(ax.get_position())
-    for i in range(len(n[0])):
-        n[0][i].set_alpha(0.00)
-
     ax.set_axis_off()
 
     plt.savefig( \
         sys.path[0] \
-        + '/results/' + name, bbox_inches \
-        = "tight", format = 'pdf' \
+        + '/results/' + name + '.png', bbox_inches \
+        = "tight", format = 'png', dpi = 30 \
     )
 
 title = 'анемия'
@@ -317,24 +295,49 @@ analytes = [
     'PltN','MPV'
 ]
 
-for sample in os.listdir(sys.path[0] + '/anemia/samples/'):
-    age = int(sample[1:3])
-    name = sample + '.pdf'
+df = pd.read_csv('NHANES_refined.csv', index_col=0)
 
-    a = LabReference('anemia', group = sample[0])
-    cat = a.getList('cat', age)
-    minRange = a.getList('min', age)
-    maxRange = a.getList('max', age)
+df = df[df['Pregnancy'] == 2]
+df = df[df['Age_years'] < 99]
+df = df[df['Age_years'] > 12]
 
-    sampleDict = dict()
-    with open(sys.path[0] + '/anemia/samples/' + sample, 'r') as inpObj:
-        lines = inpObj.readlines()
-    for l in lines:
-        sampleDict[l.split('\t')[0]] = l.split('\t')[1]
+a = LabReference('references.txt')
+# cat = list(a.keys())
+cat = analytes
+
+for i, r in df.iterrows():
+    minRange = list()
+    maxRange = list()
     values = list()
     for c in cat:
-        if sampleDict[c]:
-            values.append(float(sampleDict[c]))
-        else:
-            values.append('NA')
-    main(name, title, cat, values, minRange, maxRange)
+        if r['Gender'] == 1:
+            sex = 'm'
+        elif r['Gender'] == 2:
+            sex = 'f'
+        minRange.append(a[c][sex][r['Age_years']].min)
+        maxRange.append(a[c][sex][r['Age_years']].max)
+        values.append(r[c])
+    main(str(i), title, cat, values, minRange, maxRange)
+    print(df.iloc[0])
+
+# for sample in os.listdir(sys.path[0] + '/anemia/samples/'):
+#     age = int(sample[1:3])
+#     name = sample + '.pdf'
+
+#     a = LabReference('anemia', group = sample[0])
+#     cat = a.getList('cat', age)
+#     minRange = a.getList('min', age)
+#     maxRange = a.getList('max', age)
+
+#     sampleDict = dict()
+#     with open(sys.path[0] + '/anemia/samples/' + sample, 'r') as inpObj:
+#         lines = inpObj.readlines()
+#     for l in lines:
+#         sampleDict[l.split('\t')[0]] = l.split('\t')[1]
+#     values = list()
+#     for c in cat:
+#         if sampleDict[c]:
+#             values.append(float(sampleDict[c]))
+#         else:
+#             values.append('NA')
+#     main(name, title, cat, values, minRange, maxRange)
